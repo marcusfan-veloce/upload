@@ -19,23 +19,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate the upload token and get the stored Google access token
-    const uploadLink = await getUploadLink(uploadToken)
-    if (!uploadLink) {
-      return NextResponse.json(
-        { error: 'Invalid or inactive upload link' },
-        { status: 401 }
-      )
-    }
-
-    if (!uploadLink.google_access_token) {
-      console.error('No Google access token found for upload link:', uploadToken)
-      return NextResponse.json(
-        { error: 'No Google access token available for this link. Please recreate the upload link.' },
-        { status: 401 }
-      )
-    }
-
     // Get the Supabase client with service role key
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,6 +30,32 @@ export async function POST(request: NextRequest) {
         }
       }
     )
+
+    // Get the upload link
+    const { data: uploadLink, error: linkError } = await supabase
+      .from('permanent_upload_links')
+      .select('*')
+      .eq('upload_token', uploadToken)
+      .eq('is_active', true)
+      .single()
+
+    if (linkError || !uploadLink) {
+      throw new Error('Upload link not found or inactive')
+    }
+
+    // Debug: Log upload link details
+    console.log('Debug: Found upload link for user:', uploadLink.user_id)
+    console.log('Debug: Upload link token length:', uploadLink.google_access_token?.length || 0)
+    console.log('Debug: Upload link token preview:', uploadLink.google_access_token?.substring(0, 20) + '...')
+    console.log('Debug: Upload link created/updated at:', uploadLink.created_at, uploadLink.updated_at)
+
+    if (!uploadLink.google_access_token) {
+      console.error('No Google access token found for upload link:', uploadToken)
+      return NextResponse.json(
+        { error: 'No Google access token available for this link. Please recreate the upload link.' },
+        { status: 401 }
+      )
+    }
 
     // Get the user's email for the notification
     const { data: { user } } = await supabase.auth.admin.getUserById(uploadLink.user_id)
@@ -111,6 +120,10 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString()
         })
         .eq('id', uploadRecord.id)
+
+      // Debug: Log token details
+      console.log('Debug: Upload link token length:', uploadLink.google_access_token?.length || 0)
+      console.log('Debug: Upload link token preview:', uploadLink.google_access_token?.substring(0, 20) + '...')
 
       // Send email notification
       const uploadTime = new Date().toLocaleString()

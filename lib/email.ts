@@ -1,5 +1,42 @@
 // Gmail API implementation using existing user's access token (edge runtime compatible)
 
+// Test token permissions before sending email
+async function testTokenPermissions(accessToken: string): Promise<boolean> {
+  try {
+    console.log('Debug: Testing token permissions...')
+
+    // Try to get user profile to test basic token validity
+    const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
+
+    if (!profileResponse.ok) {
+      console.error('Debug: Token invalid for basic profile access:', profileResponse.status)
+      return false
+    }
+
+    // Try to get Gmail profile to test gmail.send permission
+    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
+
+    if (!gmailResponse.ok) {
+      console.error('Debug: Token lacks Gmail permissions:', gmailResponse.status)
+      return false
+    }
+
+    console.log('Debug: Token has all required permissions')
+    return true
+  } catch (error) {
+    console.error('Debug: Error testing token permissions:', error)
+    return false
+  }
+}
+
 export async function sendUploadNotification({
   userEmail,
   fileName,
@@ -31,6 +68,20 @@ export async function sendUploadNotification({
       return {
         success: false,
         error: 'No Google access token provided for sending email'
+      }
+    }
+
+    // Debug: Log token details (first 20 chars for security)
+    console.log('Debug: Using access token:', googleAccessToken.substring(0, 20) + '...')
+    console.log('Debug: Token length:', googleAccessToken.length)
+
+    // Test token permissions before proceeding
+    const hasPermissions = await testTokenPermissions(googleAccessToken)
+    if (!hasPermissions) {
+      console.error('Debug: Token lacks required permissions for Gmail API')
+      return {
+        success: false,
+        error: 'Google access token lacks required permissions. Please re-authenticate with Google.'
       }
     }
 
@@ -70,6 +121,8 @@ export async function sendUploadNotification({
       emailContent
     ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
+    console.log('Debug: Attempting to send email via Gmail API...')
+
     // Send email via Gmail API using the user's access token
     const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/send`, {
       method: 'POST',
@@ -82,8 +135,12 @@ export async function sendUploadNotification({
       })
     })
 
+    console.log('Debug: Gmail API response status:', response.status)
+    console.log('Debug: Gmail API response headers:', Object.fromEntries(response.headers.entries()))
+
     if (!response.ok) {
-      const errorData = await response.json()
+      const errorData = await response.json().catch(() => ({ error: { message: 'Could not parse error response' } }))
+      console.error('Debug: Gmail API error details:', errorData)
       throw new Error(`Gmail API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
     }
 
