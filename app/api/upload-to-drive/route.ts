@@ -119,7 +119,8 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         fileSize: file.size,
         folderName: uploadLink.folder_name,
-        uploadTime: uploadTime
+        uploadTime: uploadTime,
+        googleAccessToken: uploadLink.google_access_token
       })
 
       return NextResponse.json({

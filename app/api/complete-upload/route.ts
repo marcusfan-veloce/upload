@@ -53,18 +53,28 @@ export async function POST(request: NextRequest) {
       throw updateError
     }
 
-    // Get the user's email for the notification
+    // Get the user's email and access token for the notification
     const { data: { user } } = await supabase.auth.admin.getUserById(uploadRecord.user_id)
     if (user) {
-      // Send email notification
-      const uploadTime = new Date().toLocaleString()
-      await sendUploadNotification({
-        userEmail: user.email!,
-        fileName: uploadRecord.file_name,
-        fileSize: uploadRecord.file_size,
-        folderName: uploadRecord.permanent_upload_links.folder_name,
-        uploadTime: uploadTime
-      })
+      // Get the upload link to access the Google access token
+      const { data: uploadLink } = await supabase
+        .from('permanent_upload_links')
+        .select('google_access_token')
+        .eq('user_id', uploadRecord.user_id)
+        .single()
+
+      if (uploadLink?.google_access_token) {
+        // Send email notification
+        const uploadTime = new Date().toLocaleString()
+        await sendUploadNotification({
+          userEmail: user.email!,
+          fileName: uploadRecord.file_name,
+          fileSize: uploadRecord.file_size,
+          folderName: uploadRecord.permanent_upload_links.folder_name,
+          uploadTime: uploadTime,
+          googleAccessToken: uploadLink.google_access_token
+        })
+      }
     }
 
     return NextResponse.json({
