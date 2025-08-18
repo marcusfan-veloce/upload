@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { signInWithGoogle, signOut, getCurrentUser } from '@/lib/auth'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { useRouter } from 'next/navigation'
 
 export default function Auth() {
   const [user, setUser] = useState<any>(null)
@@ -43,7 +44,7 @@ export default function Auth() {
 }
 
 function ProfileButton() {
-
+  const router = useRouter()
   const handleSignOut = async () => {
     try {
       await signOut()
@@ -59,7 +60,7 @@ function ProfileButton() {
       </DropdownMenuTrigger>
       <DropdownMenuContent className='bg-white/20 w-30 rounded-xl box-border p-2 space-y-2 mt-2'>
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push('/dashboard')}>
             Settings
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSignOut}>
