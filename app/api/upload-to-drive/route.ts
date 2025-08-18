@@ -43,11 +43,7 @@ export async function POST(request: NextRequest) {
       throw new Error('Upload link not found or inactive')
     }
 
-    // Debug: Log upload link details
-    console.log('Debug: Found upload link for user:', uploadLink.user_id)
-    console.log('Debug: Upload link token length:', uploadLink.google_access_token?.length || 0)
-    console.log('Debug: Upload link token preview:', uploadLink.google_access_token?.substring(0, 20) + '...')
-    console.log('Debug: Upload link created/updated at:', uploadLink.created_at, uploadLink.updated_at)
+
 
     if (!uploadLink.google_access_token) {
       console.error('No Google access token found for upload link:', uploadToken)
@@ -121,19 +117,14 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', uploadRecord.id)
 
-      // Debug: Log token details
-      console.log('Debug: Upload link token length:', uploadLink.google_access_token?.length || 0)
-      console.log('Debug: Upload link token preview:', uploadLink.google_access_token?.substring(0, 20) + '...')
-
-      // Send email notification
+            // Send email notification
       const uploadTime = new Date().toLocaleString()
       await sendUploadNotification({
         userEmail: user.email!,
         fileName: file.name,
         fileSize: file.size,
         folderName: uploadLink.folder_name,
-        uploadTime: uploadTime,
-        googleAccessToken: uploadLink.google_access_token
+        uploadTime: uploadTime
       })
 
       return NextResponse.json({
