@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import { getUploadLink } from '@/lib/upload-links'
 import { sendUploadNotification } from '@/lib/email'
 
+// Use Edge Runtime for larger payloads
+export const runtime = 'edge'
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
 
 export async function POST(request: NextRequest) {
