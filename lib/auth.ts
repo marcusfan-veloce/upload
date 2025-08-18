@@ -12,7 +12,7 @@ export async function signInWithGoogle() {
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
-        scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
+        scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.send'
       },
       redirectTo: `${window.location.origin}/auth/callback`
     }
