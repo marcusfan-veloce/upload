@@ -45,30 +45,85 @@ export default function ClientUpload({ token }: ClientUploadProps) {
     multiple: false
   })
 
-  const uploadToGoogleDrive = async (file: File) => {
+  const uploadDirectlyToGoogleDrive = async (file: File) => {
     try {
-      // Create FormData for the upload
+      // First, create a record in our system via API (metadata only)
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('fileName', file.name)
+      formData.append('fileSize', file.size.toString())
+      formData.append('fileType', file.type)
       formData.append('uploadToken', token)
 
-      // Upload to our API endpoint
-      const response = await fetch('/api/upload-to-drive', {
+      const response = await fetch('/api/create-upload-record', {
         method: 'POST',
         body: formData
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Upload failed')
+        throw new Error(errorData.error || 'Failed to create upload record')
       }
 
       const result = await response.json()
-      return result
+
+      // Now upload directly to Google Drive using the stored access token
+      const fileBuffer = await file.arrayBuffer()
+
+      const driveResponse = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${uploadLink.google_access_token}`,
+            'Content-Type': 'multipart/related; boundary=foo_bar_baz',
+          },
+          body: createMultipartBody(file.name, fileBuffer, file.type, uploadLink.folder_id)
+        }
+      )
+
+      if (!driveResponse.ok) {
+        throw new Error(`Google Drive upload failed: ${driveResponse.status}`)
+      }
+
+      const driveResult = await driveResponse.json()
+
+      // Update the record to completed
+      await fetch('/api/complete-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadId: result.uploadId,
+          googleDriveFileId: driveResult.id
+        })
+      })
+
+      return { success: true, googleDriveFileId: driveResult.id }
     } catch (error) {
       console.error('Upload error:', error)
       throw error
     }
+  }
+
+  const createMultipartBody = (fileName: string, fileBuffer: ArrayBuffer, mimeType: string, folderId: string): string => {
+    const boundary = 'foo_bar_baz'
+    const metadata = {
+      name: fileName,
+      parents: [folderId]
+    }
+
+    const body = [
+      `--${boundary}`,
+      'Content-Type: application/json; charset=UTF-8',
+      '',
+      JSON.stringify(metadata),
+      `--${boundary}`,
+      `Content-Type: ${mimeType}`,
+      '',
+      Buffer.from(fileBuffer).toString('base64'),
+      `--${boundary}--`
+    ].join('\r\n')
+
+    return body
   }
 
   const handleUpload = async () => {
@@ -82,7 +137,7 @@ export default function ClientUpload({ token }: ClientUploadProps) {
         const file = files[i]
         setUploadProgress((i / files.length) * 100)
 
-        await uploadToGoogleDrive(file)
+        await uploadDirectlyToGoogleDrive(file)
       }
 
       setUploadProgress(100)

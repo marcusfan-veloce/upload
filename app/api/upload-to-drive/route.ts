@@ -6,8 +6,6 @@ import { sendUploadNotification } from '@/lib/email'
 // Use Edge Runtime for larger payloads
 export const runtime = 'edge'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -17,14 +15,6 @@ export async function POST(request: NextRequest) {
     if (!file || !uploadToken) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    // Check file size
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `File size ${(file.size / 1024 / 1024 / 1024).toFixed(2)}GB exceeds maximum allowed size of 5GB` },
         { status: 400 }
       )
     }
@@ -45,14 +35,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    // Log token info for debugging (remove in production)
-    console.log('Upload link found:', {
-      token: uploadToken,
-      hasGoogleToken: !!uploadLink.google_access_token,
-      tokenLength: uploadLink.google_access_token?.length,
-      folderName: uploadLink.folder_name
-    })
 
     // Get the Supabase client with service role key
     const supabase = createClient(
