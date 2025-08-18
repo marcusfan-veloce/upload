@@ -57,6 +57,21 @@ export default function UploadLinkManager() {
     }
   }
 
+  const handleReactivateLink = async () => {
+    try {
+      setCreating(true)
+      setError(null)
+
+      // Reactivate the existing link by updating it with fresh Google token
+      const link = await createOrGetUploadLink()
+      await loadUploadLink() // Refresh the data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reactivate link')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
@@ -131,7 +146,7 @@ export default function UploadLinkManager() {
               </button>
             ) : (
               <button
-                onClick={handleCreateLink}
+                onClick={handleReactivateLink}
                 disabled={creating}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
               >

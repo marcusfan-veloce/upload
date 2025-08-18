@@ -35,6 +35,7 @@ export async function createOrGetUploadLink() {
           folder_id: selectedFolder.folder_id,
           folder_name: selectedFolder.folder_name,
           google_access_token: accessToken,
+          is_active: true, // Make sure to reactivate the link
           updated_at: new Date().toISOString()
         })
         .eq('id', existingLink.id)
