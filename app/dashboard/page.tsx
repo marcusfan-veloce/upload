@@ -1,22 +1,30 @@
 'use client'
-import Auth from "@/components/Auth";
 import UploadLinkManager from "@/components/UploadLinkManager";
 import FolderSelector from "@/components/FolderSelector";
 import AuthDebug from "@/components/AuthDebug";
+import { supabase } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
+
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
   return (
     <div className="bg-gradient-to-b from-background to-background/50 min-h-screen">
-      <nav>
-        <div className="flex justify-between items-center box-border p-4">
-          <span className="text-xl font-semibold">Physio Video Dashboard</span>
-          <Auth />
-        </div>
-      </nav>
-
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Welcome to your Dashboard</h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold mb-8">Welcome to your Dashboard</h1>
+            <Button variant="destructive" onClick={() => {handleSignOut()}}>
+              Sign Out
+            </Button>
+          </div>
 
           <AuthDebug />
 

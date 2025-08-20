@@ -52,7 +52,7 @@ export default function AuthDebug() {
             onClick={handleSignOut}
             className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
           >
-            Sign Out & Re-authenticate
+            Click this button if any of the above tokens are unavailable
           </button>
         </div>
       ) : (
