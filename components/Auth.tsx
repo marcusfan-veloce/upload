@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 export default function Auth() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     getCurrentUser().then(user => {
@@ -30,44 +31,17 @@ export default function Auth() {
   return (
     <div className="">
       {user ? (
-        <ProfileButton />
+        <Button variant='outline' onClick={() => router.push('/dashboard')}>
+          Go to Dashboard
+        </Button>
       ) : (
         <button
           onClick={handleSignIn}
-          className="bg-blue-500 text-white px-2 py-1 rounded-xl"
+          className="bg-neutral-900 text-white px-4 mt-2 py-4 rounded-xl"
         >
           Sign in with Google
         </button>
       )}
     </div>
-  )
-}
-
-function ProfileButton() {
-  const router = useRouter()
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline">My Account</Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className='bg-white/20 w-30 rounded-xl box-border p-2 space-y-2 mt-2'>
-        <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleSignOut}>
-            Logout
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

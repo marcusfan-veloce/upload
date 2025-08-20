@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('/fonts/Rubik-VariableFont_wght.ttf');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

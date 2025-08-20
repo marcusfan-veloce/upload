@@ -177,11 +177,6 @@ export default function ClientUpload({ token }: ClientUploadProps) {
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="font-semibold text-blue-800 mb-1">Uploading to:</h3>
-        <p className="text-blue-700">{uploadLink.folder_name}</p>
-      </div>
-
       <div
         {...getRootProps()}
         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
@@ -234,6 +229,9 @@ export default function ClientUpload({ token }: ClientUploadProps) {
           </button>
         </div>
       )}
+      <div>
+        <h3>Please wait for the upload to finish before closing the website.</h3>
+      </div>
     </div>
   )
 }
