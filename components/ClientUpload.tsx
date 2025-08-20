@@ -229,7 +229,7 @@ export default function ClientUpload({ token }: ClientUploadProps) {
           </button>
         </div>
       )}
-      <div>
+      <div className='text-center font-[Rubik]'>
         <h3>Please wait for the upload to finish before closing the website.</h3>
       </div>
     </div>
