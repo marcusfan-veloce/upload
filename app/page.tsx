@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<any>(null)
 
 
   useEffect(() => {
@@ -14,27 +13,15 @@ export default function Home() {
       setUser(user)
       setLoading(false)
     })
-    checkAuth()
   }, [])
-
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-    } catch (error) {
-      console.error('Auth check error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="bg-gradient-to-b from-background to-background/50 h-full justify-center items-center flex">
-      {session ?
+      {user ?
 
         <div className="flex flex-col justify-center items-center box-border p-4 space-y-2 font-[Rubik]">
           <span className="font-semibold text-4xl">GMA Video Upload</span>
-          <span>Welcome back, {session.user.name}!</span>
+          <span>Welcome back, {user.raw_user_meta_data?.full_name || user.raw_user_meta_data?.name}!</span>
           <Auth />
         </div>
 
