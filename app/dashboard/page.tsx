@@ -24,11 +24,6 @@ export default function Dashboard() {
             <UploadLinkManager />
             <FolderSelector />
           </div>
-
-          <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Your Videos</h2>
-            <p className="text-gray-600">Videos uploaded by clients will appear here automatically.</p>
-          </div>
         </div>
       </div>
     </div>
