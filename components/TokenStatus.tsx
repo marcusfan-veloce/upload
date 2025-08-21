@@ -1,11 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { checkUserTokenStatus, getTokenStatusMessage, TokenStatus } from '@/lib/token-manager'
+import { checkUserTokenStatus, getTokenStatusMessage, TokenStatusInfo } from '@/lib/token-manager'
 import { supabase } from '@/lib/auth'
 import { CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react'
 
 export default function TokenStatus() {
-  const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null)
+  const [tokenStatus, setTokenStatus] = useState<TokenStatusInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
 

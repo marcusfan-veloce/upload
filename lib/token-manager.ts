@@ -1,6 +1,6 @@
 import { supabase } from './auth'
 
-export interface TokenStatus {
+export interface TokenStatusInfo {
   isValid: boolean
   expiresAt: Date | null
   timeUntilExpiry: number | null // milliseconds
@@ -17,7 +17,7 @@ export interface RefreshResult {
 /**
  * Check the status of a Google access token
  */
-export function checkTokenStatus(expiresAt: string | null): TokenStatus {
+export function checkTokenStatus(expiresAt: string | null): TokenStatusInfo {
   if (!expiresAt) {
     return {
       isValid: false,
@@ -43,7 +43,7 @@ export function checkTokenStatus(expiresAt: string | null): TokenStatus {
 /**
  * Get a human-readable message about token status
  */
-export function getTokenStatusMessage(status: TokenStatus): string {
+export function getTokenStatusMessage(status: TokenStatusInfo): string {
   if (!status.expiresAt) {
     return 'No token expiry information available'
   }
@@ -71,7 +71,7 @@ export function getTokenStatusMessage(status: TokenStatus): string {
 /**
  * Check if a user's upload link has valid tokens
  */
-export async function checkUserTokenStatus(userId: string): Promise<TokenStatus | null> {
+export async function checkUserTokenStatus(userId: string): Promise<TokenStatusInfo | null> {
   try {
     const { data, error } = await supabase
       .from('permanent_upload_links')
@@ -97,7 +97,7 @@ export async function checkUserTokenStatus(userId: string): Promise<TokenStatus 
 export async function getAllTokenStatuses(): Promise<Array<{
   userId: string
   uploadToken: string
-  status: TokenStatus
+  status: TokenStatusInfo
   folderName: string
 }>> {
   try {
