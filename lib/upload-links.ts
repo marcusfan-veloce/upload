@@ -39,7 +39,7 @@ async function refreshGoogleToken(refreshToken: string) {
   }
 }
 
-async function ensureValidToken(uploadRecord: any) {
+export async function ensureValidToken(uploadRecord: any) {
   try {
     console.log('Checking token validity for upload record:', uploadRecord.id)
     console.log('Current token expires at:', uploadRecord.token_expires_at)
@@ -185,6 +185,8 @@ export async function createOrGetUploadLink() {
 
 export async function getUploadLink(uploadToken: string) {
   try {
+    console.log('getUploadLink called with token:', uploadToken)
+
     const { data, error } = await supabase
       .from('permanent_upload_links')
       .select('*')
@@ -192,8 +194,12 @@ export async function getUploadLink(uploadToken: string) {
       .eq('is_active', true)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase error in getUploadLink:', error)
+      throw error
+    }
 
+    console.log('getUploadLink successful, data:', data)
     return data
   } catch (error) {
     console.error('Error getting upload link:', error)
@@ -203,19 +209,28 @@ export async function getUploadLink(uploadToken: string) {
 
 export async function getUploadLinkWithValidToken(uploadToken: string) {
   try {
+    console.log('getUploadLinkWithValidToken called with token:', uploadToken)
+
     const uploadRecord = await getUploadLink(uploadToken)
+    console.log('getUploadLink result:', uploadRecord)
+
     if (!uploadRecord) {
       throw new Error('Upload link not found')
     }
 
+    console.log('About to call ensureValidToken with record:', uploadRecord.id)
+
     // Ensure the token is valid and refresh if necessary
     const validToken = await ensureValidToken(uploadRecord)
+    console.log('ensureValidToken returned token:', validToken ? 'VALID_TOKEN' : 'NO_TOKEN')
 
     // Return the record with the valid token
-    return {
+    const result = {
       ...uploadRecord,
       google_access_token: validToken
     }
+    console.log('Returning result with valid token')
+    return result
   } catch (error) {
     console.error('Error getting upload link with valid token:', error)
     throw error

@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { getUploadLink } from '@/lib/upload-links'
+import { getUploadLinkWithValidToken } from '@/lib/upload-links'
 
 interface ClientUploadProps {
   token: string
@@ -24,9 +24,14 @@ export default function ClientUpload({ token }: ClientUploadProps) {
     try {
       setLoading(true)
       setError(null)
-      const link = await getUploadLink(token)
+      console.log('Validating upload token:', token)
+
+      // Get the upload link data using the public token
+      const link = await getUploadLinkWithValidToken(token)
+      console.log('Token validation successful, upload link ready:', link)
       setUploadLink(link)
     } catch (err) {
+      console.error('Token validation failed:', err)
       setError(err instanceof Error ? err.message : 'Invalid or inactive link')
     } finally {
       setLoading(false)
@@ -66,9 +71,11 @@ export default function ClientUpload({ token }: ClientUploadProps) {
 
       const result = await response.json()
 
-      // Now upload directly to Google Drive using the stored access token
+      // Now upload directly to Google Drive using the validated access token
+      // This token has been automatically refreshed if it was expired
       const fileBuffer = await file.arrayBuffer()
 
+      console.log('Uploading to Google Drive with validated token...')
       const driveResponse = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
         {
@@ -82,10 +89,13 @@ export default function ClientUpload({ token }: ClientUploadProps) {
       )
 
       if (!driveResponse.ok) {
+        const errorText = await driveResponse.text()
+        console.error('Google Drive upload failed:', driveResponse.status, errorText)
         throw new Error(`Google Drive upload failed: ${driveResponse.status}`)
       }
 
       const driveResult = await driveResponse.json()
+      console.log('File successfully uploaded to Google Drive:', driveResult.id)
 
       // Update the record to completed
       await fetch('/api/complete-upload', {
