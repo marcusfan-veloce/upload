@@ -4,6 +4,8 @@ import { getSelectedFolder } from './drive'
 // Token management functions
 async function refreshGoogleToken(refreshToken: string) {
   try {
+    console.log('Attempting to refresh Google token...')
+
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -18,10 +20,14 @@ async function refreshGoogleToken(refreshToken: string) {
     })
 
     if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.status}`)
+      const errorText = await response.text()
+      console.error('Token refresh failed:', response.status, errorText)
+      throw new Error(`Token refresh failed: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('Token refresh successful, new expiry:', data.expires_in, 'seconds')
+
     return {
       access_token: data.access_token,
       expires_in: data.expires_in,
@@ -35,41 +41,56 @@ async function refreshGoogleToken(refreshToken: string) {
 
 async function ensureValidToken(uploadRecord: any) {
   try {
+    console.log('Checking token validity for upload record:', uploadRecord.id)
+    console.log('Current token expires at:', uploadRecord.token_expires_at)
+
     // Check if token is expired (with 5 minute buffer)
     const now = Date.now()
     const expiresAt = new Date(uploadRecord.token_expires_at).getTime()
     const bufferTime = 5 * 60 * 1000 // 5 minutes in milliseconds
 
+    console.log('Current time:', new Date(now).toISOString())
+    console.log('Token expires at:', new Date(expiresAt).toISOString())
+    console.log('Buffer time (ms):', bufferTime)
+    console.log('Time until expiry (ms):', expiresAt - now)
+    console.log('Needs refresh:', (expiresAt - now) <= bufferTime)
+
     if (now < (expiresAt - bufferTime)) {
-      // Token is still valid
+      console.log('Token is still valid, returning existing token')
       return uploadRecord.google_access_token
     }
 
     // Token is expired or close to expiring, refresh it
     if (!uploadRecord.google_refresh_token) {
+      console.error('No refresh token available for upload record:', uploadRecord.id)
       throw new Error('No refresh token available')
     }
 
-    console.log('Refreshing expired Google access token...')
-    const newTokens = await refreshGoogleToken(uploadRecord.google_refresh_token)
+    console.log('Refreshing expired Google access token via API...')
 
-    // Update the upload record with new tokens
-    const { error: updateError } = await supabase
-      .from('permanent_upload_links')
-      .update({
-        google_access_token: newTokens.access_token,
-        token_expires_at: new Date(Date.now() + (newTokens.expires_in * 1000)).toISOString(),
-        updated_at: new Date().toISOString()
+    // Use the server-side API endpoint for token refresh
+    const refreshResponse = await fetch('/api/refresh-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refreshToken: uploadRecord.google_refresh_token,
+        uploadRecordId: uploadRecord.id
       })
-      .eq('id', uploadRecord.id)
+    })
 
-    if (updateError) {
-      console.error('Error updating tokens:', updateError)
-      throw updateError
+    if (!refreshResponse.ok) {
+      const errorData = await refreshResponse.json()
+      console.error('Token refresh API failed:', errorData)
+      throw new Error(`Token refresh failed: ${errorData.error}`)
     }
 
-    console.log('Successfully refreshed Google access token')
-    return newTokens.access_token
+    const refreshData = await refreshResponse.json()
+    console.log('Token refresh successful via API, new expiry:', refreshData.expires_at)
+
+    // Return the new access token (database is already updated by the API)
+    return refreshData.access_token
   } catch (error) {
     console.error('Error ensuring valid token:', error)
     throw error

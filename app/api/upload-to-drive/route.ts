@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
     // Get the upload link with automatically refreshed token
     let uploadLink
     try {
+      console.log('Getting upload link with valid token for token:', uploadToken)
       uploadLink = await getUploadLinkWithValidToken(uploadToken)
+      console.log('Successfully got upload link with valid token')
     } catch (tokenError) {
       console.error('Token validation error:', tokenError)
 
