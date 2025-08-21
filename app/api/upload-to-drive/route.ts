@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getUploadLink } from '@/lib/upload-links'
+import { getUploadLinkWithValidToken } from '@/lib/upload-links'
 import { sendUploadNotification } from '@/lib/email'
 
 // Use Edge Runtime for larger payloads
@@ -31,25 +31,34 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    // Get the upload link
-    const { data: uploadLink, error: linkError } = await supabase
-      .from('permanent_upload_links')
-      .select('*')
-      .eq('upload_token', uploadToken)
-      .eq('is_active', true)
-      .single()
+    // Get the upload link with automatically refreshed token
+    let uploadLink
+    try {
+      uploadLink = await getUploadLinkWithValidToken(uploadToken)
+    } catch (tokenError) {
+      console.error('Token validation error:', tokenError)
 
-    if (linkError || !uploadLink) {
-      throw new Error('Upload link not found or inactive')
+      // Check if it's a token-related error
+      if (tokenError instanceof Error && tokenError.message.includes('refresh token')) {
+        return NextResponse.json(
+          {
+            error: 'Authentication expired. Please recreate your upload link by signing in again.',
+            code: 'TOKEN_REFRESH_FAILED'
+          },
+          { status: 401 }
+        )
+      }
+
+      return NextResponse.json(
+        { error: 'Upload link not found or inactive' },
+        { status: 404 }
+      )
     }
 
-
-
-    if (!uploadLink.google_access_token) {
-      console.error('No Google access token found for upload link:', uploadToken)
+    if (!uploadLink) {
       return NextResponse.json(
-        { error: 'No Google access token available for this link. Please recreate the upload link.' },
-        { status: 401 }
+        { error: 'Upload link not found or inactive' },
+        { status: 404 }
       )
     }
 
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
       const bytes = await file.arrayBuffer()
       const fileBuffer = Buffer.from(bytes)
 
-      // Upload directly to Google Drive using the stored access token
+      // Upload directly to Google Drive using the validated access token
       const response = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`,
         {
@@ -101,6 +110,18 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorData = await response.text()
         console.error('Google Drive upload failed:', response.status, errorData)
+
+        // Check if it's an authentication error
+        if (response.status === 401) {
+          return NextResponse.json(
+            {
+              error: 'Authentication failed. Please recreate your upload link.',
+              code: 'GOOGLE_AUTH_FAILED'
+            },
+            { status: 401 }
+          )
+        }
+
         throw new Error(`Google Drive upload failed: ${response.status}`)
       }
 
@@ -117,7 +138,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', uploadRecord.id)
 
-            // Send email notification
+      // Send email notification
       const uploadTime = new Date().toLocaleString()
       await sendUploadNotification({
         userEmail: user.email!,

@@ -2,6 +2,7 @@
 import UploadLinkManager from "@/components/UploadLinkManager";
 import FolderSelector from "@/components/FolderSelector";
 import AuthDebug from "@/components/AuthDebug";
+import TokenStatus from "@/components/TokenStatus";
 import { supabase } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,10 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <UploadLinkManager />
             <FolderSelector />
+          </div>
+
+          <div className="mb-8">
+            <TokenStatus />
           </div>
         </div>
       </div>

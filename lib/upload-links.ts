@@ -1,6 +1,81 @@
 import { supabase } from './auth'
 import { getSelectedFolder } from './drive'
 
+// Token management functions
+async function refreshGoogleToken(refreshToken: string) {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Token refresh failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return {
+      access_token: data.access_token,
+      expires_in: data.expires_in,
+      token_type: data.token_type,
+    }
+  } catch (error) {
+    console.error('Error refreshing Google token:', error)
+    throw error
+  }
+}
+
+async function ensureValidToken(uploadRecord: any) {
+  try {
+    // Check if token is expired (with 5 minute buffer)
+    const now = Date.now()
+    const expiresAt = new Date(uploadRecord.token_expires_at).getTime()
+    const bufferTime = 5 * 60 * 1000 // 5 minutes in milliseconds
+
+    if (now < (expiresAt - bufferTime)) {
+      // Token is still valid
+      return uploadRecord.google_access_token
+    }
+
+    // Token is expired or close to expiring, refresh it
+    if (!uploadRecord.google_refresh_token) {
+      throw new Error('No refresh token available')
+    }
+
+    console.log('Refreshing expired Google access token...')
+    const newTokens = await refreshGoogleToken(uploadRecord.google_refresh_token)
+
+    // Update the upload record with new tokens
+    const { error: updateError } = await supabase
+      .from('permanent_upload_links')
+      .update({
+        google_access_token: newTokens.access_token,
+        token_expires_at: new Date(Date.now() + (newTokens.expires_in * 1000)).toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', uploadRecord.id)
+
+    if (updateError) {
+      console.error('Error updating tokens:', updateError)
+      throw updateError
+    }
+
+    console.log('Successfully refreshed Google access token')
+    return newTokens.access_token
+  } catch (error) {
+    console.error('Error ensuring valid token:', error)
+    throw error
+  }
+}
+
 export async function createOrGetUploadLink() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -12,13 +87,17 @@ export async function createOrGetUploadLink() {
       throw new Error('No Google Drive folder selected. Please select a folder first.')
     }
 
-    // Get the user's current session to access their Google access token
+    // Get the user's current session to access their Google tokens
     const { data: { session } } = await supabase.auth.getSession()
     const accessToken = session?.provider_token
+    const refreshToken = session?.provider_refresh_token
 
     if (!accessToken) {
       throw new Error('No Google access token available. Please sign in with Google again.')
     }
+
+    // Calculate token expiry (Google tokens typically last 1 hour)
+    const tokenExpiresAt = new Date(Date.now() + (3600 * 1000)).toISOString()
 
     // Check if user already has an upload link
     const { data: existingLink } = await supabase
@@ -28,13 +107,15 @@ export async function createOrGetUploadLink() {
       .single()
 
     if (existingLink) {
-      // Update existing link with new folder and token
+      // Update existing link with new folder and tokens
       const { data, error } = await supabase
         .from('permanent_upload_links')
         .update({
           folder_id: selectedFolder.folder_id,
           folder_name: selectedFolder.folder_name,
           google_access_token: accessToken,
+          google_refresh_token: refreshToken,
+          token_expires_at: tokenExpiresAt,
           is_active: true, // Make sure to reactivate the link
           updated_at: new Date().toISOString()
         })
@@ -60,7 +141,9 @@ export async function createOrGetUploadLink() {
           upload_token: uploadToken,
           folder_id: selectedFolder.folder_id,
           folder_name: selectedFolder.folder_name,
-          google_access_token: accessToken
+          google_access_token: accessToken,
+          google_refresh_token: refreshToken,
+          token_expires_at: tokenExpiresAt
         })
         .select()
         .single()
@@ -93,6 +176,27 @@ export async function getUploadLink(uploadToken: string) {
     return data
   } catch (error) {
     console.error('Error getting upload link:', error)
+    throw error
+  }
+}
+
+export async function getUploadLinkWithValidToken(uploadToken: string) {
+  try {
+    const uploadRecord = await getUploadLink(uploadToken)
+    if (!uploadRecord) {
+      throw new Error('Upload link not found')
+    }
+
+    // Ensure the token is valid and refresh if necessary
+    const validToken = await ensureValidToken(uploadRecord)
+
+    // Return the record with the valid token
+    return {
+      ...uploadRecord,
+      google_access_token: validToken
+    }
+  } catch (error) {
+    console.error('Error getting upload link with valid token:', error)
     throw error
   }
 }

@@ -10,7 +10,7 @@ export async function signInWithGoogle() {
     provider: 'google',
     options: {
       queryParams: {
-        access_type: 'offline',
+        access_type: 'offline', // This ensures we get a refresh token
         prompt: 'consent', // This forces new consent every time
         scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/gmail.send'
       },
@@ -20,15 +20,6 @@ export async function signInWithGoogle() {
 
   if (error) throw error
   return data
-}
-
-// Force re-authentication to get fresh tokens with new scopes
-export async function forceReAuthWithGoogle() {
-  // First sign out to clear existing tokens
-  await signOut()
-
-  // Then sign in again with forced consent
-  return signInWithGoogle()
 }
 
 export async function signOut() {
